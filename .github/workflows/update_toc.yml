@@ -19,12 +19,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Debug:list markdown files
-        run: |
-          echo "=== markdown files found ==="
-          find articles -name "*.md"
-          echo "============================"
-
       - name: Generate TOC
         run: |
           TOC_START="<!-- toc:start -->"
@@ -43,15 +37,14 @@ jobs:
           echo "" >> new_toc.txt
           echo "$TOC_END" >> new_toc.txt
 
-          echo "=== generated TOC ==="
-          cat new_toc.txt
-          echo "====================="
+      - name: Update index.md
+        run: |
+          TOC_START="<!-- toc:start -->"
+          TOC_END="<!-- toc:end -->"
+          TOC_FILE="index.md"
 
-          awk -v start="$TOC_START" -v end="$TOC_END" -v new_toc="$(cat new_toc.txt)" '
-            $0 ~ start {print new_toc; in_toc=1; next}
-            $0 ~ end {in_toc=0; next}
-            !in_toc
-          ' "$TOC_FILE" > temp_index.md && mv temp_index.md "$TOC_FILE"
+          perl -0777 -pe "s|$TOC_START.*?$TOC_END|$(printf '%s\n' "$(cat new_toc.txt)" | perl -pe 's/\\/\\\\/g; s/\$/\\\$/g; s/\|/\\\|/g; s/\n/\\n/g')|s" $TOC_FILE > temp_index.md
+          mv temp_index.md $TOC_FILE
 
       - name: Commit changes
         run: |
