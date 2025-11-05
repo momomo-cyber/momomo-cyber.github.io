@@ -2,6 +2,8 @@ name: Update TOC
 
 on:
   push:
+    paths:
+      - "articles/*.md"
     branches:
       - main
 
