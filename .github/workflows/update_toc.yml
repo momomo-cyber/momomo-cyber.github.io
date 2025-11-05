@@ -15,10 +15,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate TOC (Optimized)
+      - name: Generate TOC Links
         run: |
-          # 1. 一時ファイルに目次リンクの純粋なリストを生成する
-          #    (マーカーや不要な空行は含めない)
+          # 1. 純粋なリンクリストを生成 (マーカーや空行は含めない)
           > toc_links.txt  # 空ファイルとして作成
           
           find articles -name "*.md" | sort | while read FILE; do
@@ -30,20 +29,30 @@ jobs:
             echo "- [${TITLE}]($FILE)" >> toc_links.txt
           done
           
-          # 2. 目次マーカーを含む最終的な new_toc.txt を生成する
-          #    (これがindex.mdに挿入される内容となる)
-          (
-            echo ""
-            echo ""
-            cat toc_links.txt  # 純粋なリンクリストを挿入
-            echo ""
-            echo ""
-          ) > new_toc.txt
+          # 2. 目次ブロックに必要な空行を先頭に追加（見た目調整用）
+          #    sedでの挿入時に、の直後に改行が入るようにする
+          sed -i '1s/^/\n/' toc_links.txt 
+          sed -i '$a\\' toc_links.txt # 最後に改行を確実に追加
 
-      - name: Replace TOC in index.md
+      - name: Replace TOC in index.md (SED Force)
         run: |
-          perl -0777 -pe 'local $/; open my $fh, "new_toc.txt" or die $!; my $toc = <$fh>; s|(\s*).*?(\s*)|$1$toc$2|s;' index.md > temp_index.md
-          mv temp_index.md index.md
+          # 1. マーカー間の既存のコンテンツを全て削除する
+          #    sedの範囲指定 {d} で、startとendの間の行を全て削除
+          sed -i '//,//{
+            //!{
+              //!d
+            }
+          }' index.md
+          
+          # 2. 削除後の の直下に toc_links.txt の内容を挿入する
+          #    sedの r (read) コマンドを使用し、目次ファイルを挿入
+          TOC_CONTENT=$(cat toc_links.txt)
+          # TOC_CONTENTの内容を標準入力(stdin)経由で sed に渡し、
+          # の行（またはパターン）の後ろに挿入する
+          sed -i "//r /dev/stdin" index.md <<< "$TOC_CONTENT"
+          
+          # 3. 終了マーカーの直前に空行を挿入（見た目調整）
+          sed -i "//i\\" index.md # の直前に空行を挿入
 
 
 
