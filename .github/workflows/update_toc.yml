@@ -15,17 +15,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate TOC
+      - name: Generate TOC (Optimized)
         run: |
-          echo "<!-- toc:start -->" > new_toc.txt
-          echo "" >> new_toc.txt
+          # 1. 一時ファイルに目次リンクの純粋なリストを生成する
+          #    (マーカーや不要な空行は含めない)
+          > toc_links.txt  # 空ファイルとして作成
+          
           find articles -name "*.md" | sort | while read FILE; do
+            # H1タイトルを抽出。見つからなければファイル名を使用。
             TITLE=$(grep -m1 '^# ' "$FILE" | sed 's/^# //')
             [ -z "$TITLE" ] && TITLE=$(basename "$FILE" .md)
-            echo "- [${TITLE}]($FILE)" >> new_toc.txt
+            
+            # Markdownリスト形式で toc_links.txt に追記
+            echo "- [${TITLE}]($FILE)" >> toc_links.txt
           done
-          echo "" >> new_toc.txt
-          echo "<!-- toc:end -->" >> new_toc.txt
+          
+          # 2. 目次マーカーを含む最終的な new_toc.txt を生成する
+          #    (これがindex.mdに挿入される内容となる)
+          (
+            echo ""
+            echo ""
+            cat toc_links.txt  # 純粋なリンクリストを挿入
+            echo ""
+            echo ""
+          ) > new_toc.txt
 
       - name: Replace TOC in index.md
         run: |
