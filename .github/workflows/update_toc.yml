@@ -16,8 +16,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with: 
+        with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug:list markdown files
+        run: |
+          echo "=== markdown files found ==="
+          find articles -name "*.md"
+          echo "============================"
 
       - name: Generate TOC
         run: |
@@ -25,11 +31,9 @@ jobs:
           TOC_END="<!-- toc:end -->"
           TOC_FILE="index.md"
 
-          # 目次を作成
           echo "$TOC_START" > new_toc.txt
           echo "" >> new_toc.txt
 
-          # articles 以下の .md ファイルを走査してタイトルを抽出
           find articles -name "*.md" | sort | while read FILE; do
             TITLE=$(grep -m1 '^# ' "$FILE" | sed 's/^# //')
             [ -z "$TITLE" ] && TITLE=$(basename "$FILE" .md)
@@ -39,7 +43,10 @@ jobs:
           echo "" >> new_toc.txt
           echo "$TOC_END" >> new_toc.txt
 
-          # 既存の index.md に埋め込み
+          echo "=== generated TOC ==="
+          cat new_toc.txt
+          echo "====================="
+
           awk -v start="$TOC_START" -v end="$TOC_END" -v new_toc="$(cat new_toc.txt)" '
             $0 ~ start {print new_toc; in_toc=1; next}
             $0 ~ end {in_toc=0; next}
