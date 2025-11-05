@@ -16,35 +16,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate TOC
         run: |
-          TOC_START="<!-- toc:start -->"
-          TOC_END="<!-- toc:end -->"
-          TOC_FILE="index.md"
-
-          echo "$TOC_START" > new_toc.txt
+          echo "<!-- toc:start -->" > new_toc.txt
           echo "" >> new_toc.txt
-
           find articles -name "*.md" | sort | while read FILE; do
             TITLE=$(grep -m1 '^# ' "$FILE" | sed 's/^# //')
             [ -z "$TITLE" ] && TITLE=$(basename "$FILE" .md)
             echo "- [${TITLE}]($FILE)" >> new_toc.txt
           done
-
           echo "" >> new_toc.txt
-          echo "$TOC_END" >> new_toc.txt
+          echo "<!-- toc:end -->" >> new_toc.txt
 
-      - name: Update index.md
+      - name: Replace TOC in index.md
         run: |
-          TOC_START="<!-- toc:start -->"
-          TOC_END="<!-- toc:end -->"
-          TOC_FILE="index.md"
-
-          perl -0777 -pe "s|$TOC_START.*?$TOC_END|$(printf '%s\n' "$(cat new_toc.txt)" | perl -pe 's/\\/\\\\/g; s/\$/\\\$/g; s/\|/\\\|/g; s/\n/\\n/g')|s" $TOC_FILE > temp_index.md
-          mv temp_index.md $TOC_FILE
+          perl -0777 -pe 's|<!-- toc:start -->.*?<!-- toc:end -->|`cat new_toc.txt`|se' index.md > temp_index.md
+          mv temp_index.md index.md
 
       - name: Commit changes
         run: |
