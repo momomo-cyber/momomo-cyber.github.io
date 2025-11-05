@@ -3,8 +3,6 @@ name: Update TOC
 on:
   push:
     branches: [ main ]
-    paths:
-      - "articles/**/*.md"
 
 permissions:
   contents: write
