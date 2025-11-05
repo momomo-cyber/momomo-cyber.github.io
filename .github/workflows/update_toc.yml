@@ -30,14 +30,14 @@ jobs:
           echo "<!-- toc:end -->" >> new_toc.txt
 
       - name: Replace TOC in index.md
-        run: perl -0777 -pe '{
-              local $/;
-              open my $fh, "new_toc.txt" or die $!;
-              my $toc = <$fh>;
-              s|<!-- toc:start -->.*?<!-- toc:end -->|$toc|s;
-            }' index.md > temp_index.md
-            
-          mv temp_index.md index.md
+        run: |
+              perl -0777 -pe '{
+                local $/;
+                open my $fh, "new_toc.txt" or die $!;
+                my $toc = <$fh>;
+                s|<!-- toc:start -->.*?<!-- toc:end -->|$toc|s;
+              }' index.md > temp_index.md
+              mv temp_index.md index.md
 
 
       - name: Commit changes
