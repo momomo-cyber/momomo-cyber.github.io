@@ -2,40 +2,49 @@ name: Update TOC
 
 on:
   push:
+    branches: [ main ]
     paths:
-      - "articles/*.md"
-    branches:
-      - main
+      - "articles/**/*.md"
 
 jobs:
-  update-toc:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Generate TOC
         run: |
-          echo "" > TOC.md
+          TOC_START="<!-- toc:start -->"
+          TOC_END="<!-- toc:end -->"
+          TOC_FILE="index.md"
+
+          # 目次を作成
+          echo "$TOC_START" > new_toc.txt
+          echo "" >> new_toc.txt
+
+          # articles 以下の .md ファイルを走査してタイトルを抽出
           find articles -name "*.md" | sort | while read FILE; do
-            TITLE=$(grep -m 1 '^# ' "$FILE" | sed 's/^# //')
-            if [ -z "$TITLE" ]; then
-              TITLE=$(basename "$FILE" .md)
-            fi
-            echo "- [${TITLE}](${FILE})" >> TOC.md
+            TITLE=$(grep -m1 '^# ' "$FILE" | sed 's/^# //')
+            [ -z "$TITLE" ] && TITLE=$(basename "$FILE" .md)
+            echo "- [${TITLE}]($FILE)" >> new_toc.txt
           done
 
-      - name: Insert TOC into index.md
-        run: |
-          awk '
-            /<!-- toc:start -->/ {print; system("cat TOC.md"); found=1; next}
-            /<!-- toc:end -->/ {found=0}
-            !found
-          ' index.md > tmp && mv tmp index.md
+          echo "" >> new_toc.txt
+          echo "$TOC_END" >> new_toc.txt
 
-      - name: Commit and Push changes
+          # 既存の index.md に埋め込み
+          awk -v start="$TOC_START" -v end="$TOC_END" -v new_toc="$(cat new_toc.txt)" '
+            $0 ~ start {print new_toc; in_toc=1; next}
+            $0 ~ end {in_toc=0; next}
+            !in_toc
+          ' "$TOC_FILE" > temp_index.md && mv temp_index.md "$TOC_FILE"
+
+      - name: Commit changes
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.md
-          git commit -m "auto: update TOC" || echo "No changes"
+          git diff --quiet && echo "No changes to commit" || git commit -m "Update TOC automatically"
           git push
