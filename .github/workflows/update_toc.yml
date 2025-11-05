@@ -36,7 +36,8 @@ jobs:
               my $toc = <$fh>;
               s|<!-- toc:start -->.*?<!-- toc:end -->|$toc|s;
             }' index.md > temp_index.md
-            mv temp_index.md index.md
+            
+          mv temp_index.md index.md
 
 
       - name: Commit changes
