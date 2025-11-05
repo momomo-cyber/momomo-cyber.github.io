@@ -13,8 +13,8 @@ jobs:
 
       - name: Generate TOC
         run: |
-          echo "# 目次" > TOC.md
-          find . -name "*.md" ! -name "README.md" ! -name "index.md" ! -path "./.git/*" | sort | while read FILE; do
+          echo "" > TOC.md
+          find articles -name "*.md" | sort | while read FILE; do
             TITLE=$(grep -m 1 '^# ' "$FILE" | sed 's/^# //')
             if [ -z "$TITLE" ]; then
               TITLE=$(basename "$FILE" .md)
@@ -22,22 +22,18 @@ jobs:
             echo "- [${TITLE}](${FILE})" >> TOC.md
           done
 
-      - name: Update README.md (or index.md)
+      - name: Insert TOC into index.md
         run: |
-          TARGET_FILE="README.md"
-          if [ -f "index.md" ]; then
-            TARGET_FILE="index.md"
-          fi
-
-          # 既存のREADME.mdの# 目次以降を削除して新しいTOCを挿入
-          awk '/^# 目次/{exit} {print}' $TARGET_FILE > tmp.md
-          cat tmp.md TOC.md > $TARGET_FILE
-          rm tmp.md TOC.md
+          awk '
+            /<!-- toc:start -->/ {print; system("cat TOC.md"); found=1; next}
+            /<!-- toc:end -->/ {found=0}
+            !found
+          ' index.md > tmp && mv tmp index.md
 
       - name: Commit and Push changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add README.md index.md 2>/dev/null || true
-          git commit -m "auto: update TOC" || echo "No changes to commit"
+          git add index.md
+          git commit -m "auto: update TOC" || echo "No changes"
           git push
